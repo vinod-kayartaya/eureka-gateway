@@ -1,0 +1,93 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Welcome#123
+      POSTGRES_DB: northwind
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./dbscript:/dbscript
+    networks:
+      - spring-boot-network
+
+  eureka-service:
+    build:
+      context: ./eureka-service
+      dockerfile: Dockerfile
+    environment:
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: 'false'
+      EUREKA_CLIENT_FETCH_REGISTRY: 'false'
+      EUREKA_SERVER_ENABLE_SELF_PRESERVATION: 'false'
+    ports:
+      - "8761:8761"
+    networks:
+      - spring-boot-network
+
+  category-service:
+    build:
+      context: ./category-service
+      dockerfile: Dockerfile
+    environment:
+      DB_HOST: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: Welcome#123
+      EUREKA_SERVER_HOST: eureka-service
+    networks:
+      - spring-boot-network
+    depends_on:
+      - postgres
+      - eureka-service
+
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    environment:
+      DB_HOST: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: Welcome#123
+      CATEGORY_SERVICE_HOST: category-service
+      SUPPLIER_SERVICE_HOST: supplier-service
+      EUREKA_SERVER_HOST: eureka-service
+    networks:
+      - spring-boot-network
+    depends_on:
+      - postgres
+      - eureka-service
+
+  supplier-service:
+    build:
+      context: ./supplier-service
+      dockerfile: Dockerfile
+    environment:
+      DB_HOST: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: Welcome#123
+      EUREKA_SERVER_HOST: eureka-service
+    networks:
+      - spring-boot-network
+    depends_on:
+      - postgres
+      - eureka-service
+
+  api-gateway:
+    build:
+      context: ./gateway-service
+      dockerfile: Dockerfile
+    environment:
+      EUREKA_SERVER_HOST: eureka-service
+    ports:
+      - "8080:8080"
+    networks:
+      - spring-boot-network
+    depends_on:
+      - eureka-service
+      - category-service
+      - product-service
+      - supplier-service
+networks:
+  spring-boot-network:
+    driver: bridge
